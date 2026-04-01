@@ -1,0 +1,188 @@
+---
+title: "Sentimentanalysis_posts"
+author: "Jose Hernandez"
+date: "2026-03-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview of lesson
+
+In this lesson, we will:
+- Load a CSV file of short text posts
+- Clean and tokenize the text
+- Perform sentiment analysis using the NRC lexicon
+- Visualize emotions with barplots and word clouds
+
+
+```{r}
+library(syuzhet)
+library(RColorBrewer)
+library(wordcloud)
+library(readr)
+library(dplyr)
+
+```
+
+### Loading data
+
+First we will load our posts.
+
+
+```{r}
+data <- read_csv("sentiment_statements_unlabeled.csv")
+
+# View data
+head(data)
+```
+
+### Text Processing
+
+Now we combine the text and we tokenize it by word. 
+
+```{r}
+# joining the posts
+text_string <- paste(data$statement_text, collapse = " ")
+
+text_words <- get_tokens(text_string)
+head(text_words)
+
+
+```
+
+We could also tokenize it by sentence instead
+
+```{r}
+sentence_vector <- get_sentences(text_string)
+head(sentence_vector)
+
+```
+
+### Sentiment analysis
+```{r}
+
+sentiment_scores <- get_nrc_sentiment(text_words, lang = "english")
+
+head(sentiment_scores)
+```
+Given how large our dataset is it is important thbat we have a way to view it in context either by a statistical summary or a plot.
+
+```{r}
+summary(sentiment_scores)
+```
+
+
+### 
+```{r}
+barplot(
+  colSums(prop.table(sentiment_scores[, 1:8])),
+  space = 0.2,
+  horiz = FALSE,
+  las = 1,
+  cex.names = 0.8,
+  col = brewer.pal(n = 8, name = "Set3"),
+  main = "Emotion Distribution of Posts",
+  xlab = "Emotions",
+  ylab = "Proportion"
+)
+
+barplot(
+  colSums(prop.table(sentiment_scores[, 9:10])),
+  space = 0.2,
+  horiz = FALSE,
+  las = 1,
+  cex.names = 0.8,
+  col = brewer.pal(n = 8, name = "Set3"),
+  main = "Positive vs Negative Distribution of Posts",
+  xlab = "Categories",
+  ylab = "Proportion"
+)
+
+```
+
+
+# Parallelization 
+
+parallelization allow us to assign our tasks to multiple cores to get the work done quicker. But first we need to learn how to reus our code.
+
+### Reusing our code -Creating a function 
+
+To do this, we have to create a function that runs this sentiment analysis once we call it.
+```{r}
+
+run_sentiment <- function(words_subset) {
+  get_nrc_sentiment(words_subset, lang = "english")
+}
+
+```
+
+
+
+### Distributing the work
+
+Having the function we can now split our dataset.
+```{r}
+words_part1 <- text_words[1:1500]
+words_part2 <- text_words[1501:3029]
+```
+
+
+
+### Applying a function to our work
+
+Now instead of writing our sentiment analysis code block again we can run the function and apply it to bboth of our datasets. 
+
+```{r}
+baseline_time <- system.time({
+  results_linear <- lapply(
+      list(words_part1, words_part2),
+      run_sentiment
+  )
+})
+  
+print(baseline_time)
+```
+
+
+
+### Applying the fucntion in parallel
+
+```{r}
+library(parallel)
+```
+
+Before creating our parallelization lets first see how many cores we have available to use.
+
+```{r}
+num_cores <- detectCores() 
+print(num_cores)
+
+
+allocated_cores <- as.numeric(Sys.getenv("SLURM_JOB_CPUS_PER_NODE", unset = 1))
+print(allocated_cores)
+
+
+```
+
+```{r}
+parallel_time <- system.time({
+  
+  results_parallel <- mclapply(
+    list(words_part1, words_part2),
+    run_sentiment,
+    mc.cores = 2
+  )
+  
+  # Combine results back together
+  sentiment_scores_parallel <- do.call(rbind, results_parallel)
+})
+
+print(parallel_time)
+
+
+```
+
+

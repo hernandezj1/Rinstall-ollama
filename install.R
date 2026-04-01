@@ -1,0 +1,5 @@
+install.packages("syuzhet")
+install.packages("RColorBrewer")
+install.packages("wordcloud")
+install.packages("readr")
+install.packages("dplyr")
