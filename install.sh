@@ -9,7 +9,7 @@ Rscript install.R
 # Ollama install
 #
 
-srun -A rcc_internal -n 4 -N 1 --gres=gpu:4500:1 --pty /bin/bash
+srun -A genacc_q -n 4 -N 1 --gres=gpu:4500:1 --pty /bin/bash
 
 curl -L https://github.com/ollama/ollama/releases/download/v0.13.5/ollama-windows-arm64.zip -o ollama-linux-arm64.tgz
 
