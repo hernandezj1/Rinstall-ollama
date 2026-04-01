@@ -1,12 +1,4 @@
-# This code will install R dependencies as well as the ollama for each person's home directory
-#
-
-module load R 
-
-Rscript install.R
-
-# installation of R packages completed
-# Ollama install
+# Ollama install non sudo for HPC
 #
 
 srun -A genacc_q -n 4 -N 1 --gres=gpu:4500:1 --pty /bin/bash
